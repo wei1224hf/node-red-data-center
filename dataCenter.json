@@ -1,0 +1,667 @@
+{
+    "id": "14fea2af83a06baf",
+    "type": "subflow",
+    "name": "dataCenter",
+    "info": "",
+    "category": "storage",
+    "in": [
+        {
+            "x": 60,
+            "y": 80,
+            "wires": [
+                {
+                    "id": "5554a2a2f33a43c7"
+                }
+            ]
+        }
+    ],
+    "out": [
+        {
+            "x": 1780,
+            "y": 300,
+            "wires": [
+                {
+                    "id": "4686358fbfc7c277",
+                    "port": 0
+                }
+            ]
+        }
+    ],
+    "env": [],
+    "meta": {
+        "module": "node-red-data-center",
+        "type": "data-center",
+        "version": "0.0.2",
+        "author": "wei1224hf@gmail.com",
+        "desc": "change a request , then waiting for specific response to change, reset the request after 2 seconds",
+        "keywords": "memory monitor",
+        "license": "BSD-3-Clause"
+    },
+    "color": "#DDAA99",
+    "icon": "node-red/db.svg",
+    "flow": [
+        {
+            "id": "03bccdf3ead313fd",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "读取所有设备",
+            "func": "msg.topic = \"select * from device order by id\";\nglobal.set(\"datas\",{});\nglobal.set(\"devices\",{});\nreturn msg;",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 260,
+            "y": 520,
+            "wires": [
+                [
+                    "aa53129c620841dc"
+                ]
+            ]
+        },
+        {
+            "id": "aa53129c620841dc",
+            "type": "sqlite",
+            "z": "14fea2af83a06baf",
+            "mydb": "sqlitedb_id",
+            "sqlquery": "msg.topic",
+            "sql": "",
+            "name": "",
+            "x": 460,
+            "y": 520,
+            "wires": [
+                [
+                    "1c9562554a62c0d0",
+                    "aa6877cafba9f14b"
+                ]
+            ]
+        },
+        {
+            "id": "aa6877cafba9f14b",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "更新全局配置",
+            "func": "const arr = msg.payload;\nlet config_nodes = global.get(\"config-nodes\");\n\nfor(let i=0;i<arr.length;i++){\n    const t = arr[i];\n    if(t.connect_type == 'modbus-server'){\n        var obj =   {\n            \"id\": \"967785e4049706c4\",\n            \"type\": \"modbus-client\",\n            \"name\": \"6轴-84\",\n            \"clienttype\": \"tcp\",\n            \"bufferCommands\": true,\n            \"stateLogEnabled\": false,\n            \"queueLogEnabled\": false,\n            \"failureLogEnabled\": true,\n            \"tcpHost\": \"193.168.110.84\",\n            \"tcpPort\": \"502\",\n            \"tcpType\": \"DEFAULT\",\n            \"serialPort\": \"/dev/ttyUSB\",\n            \"serialType\": \"RTU-BUFFERD\",\n            \"serialBaudrate\": \"9600\",\n            \"serialDatabits\": \"8\",\n            \"serialStopbits\": \"1\",\n            \"serialParity\": \"none\",\n            \"serialConnectionDelay\": \"100\",\n            \"serialAsciiResponseStartDelimiter\": \"0x3A\",\n            \"unit_id\": \"1\",\n            \"commandDelay\": \"1\",\n            \"clientTimeout\": \"1000\",\n            \"reconnectOnTimeout\": true,\n            \"reconnectTimeout\": \"2000\",\n            \"parallelUnitIdsAllowed\": true,\n            \"showErrors\": false,\n            \"showWarnings\": true,\n            \"showLogs\": true\n          };\n        obj.name = t.name;\n        obj.id = t.code;\n        obj.tcpHost = t.connect_address.split(\":\")[0];\n        obj.tcpPort = t.connect_address.split(\":\")[1];\n        var isContains = false;\n        for(var i2=0;i2<config_nodes.length;i2++){\n            if(config_nodes[i2].id== t.code){\n                isContains = true;\n                break;\n            }\n        }\n        if(!isContains){\n            config_nodes.push(obj);\n        }\n    }\n}\nmsg.payload = config_nodes;\nconst type = global.get(\"config_flow_type\");\nmsg.filename = global.get(\"userDir\") + \"\\\\config-nodes.\"+type;\nreturn msg;",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 660,
+            "y": 600,
+            "wires": [
+                [
+                    "03cd708992d10877"
+                ]
+            ]
+        },
+        {
+            "id": "957f201f498caea8",
+            "type": "file",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "filename": "filename",
+            "filenameType": "msg",
+            "appendNewline": false,
+            "createDir": false,
+            "overwriteFile": "true",
+            "encoding": "utf8",
+            "x": 1140,
+            "y": 600,
+            "wires": [
+                []
+            ]
+        },
+        {
+            "id": "1c9562554a62c0d0",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "读取设备的监听点位",
+            "func": "const arr = msg.payload;\nlet obj = {};\nfor(let i2=0;i2<arr.length;i2++){\n    obj[arr[i2].code] = arr[i2];\n}\nglobal.set(\"devices\",obj);\nfor(let i=0;i<arr.length;i++){\n    const code = arr[i].code;\n    let msg2 = {\n        topic : \"select * from device_datas where device = '\"+code+\"' order by mode, id;\",\n        code: code,\n        rate: 300,\n        idx: i\n    };\n    if(i==arr.length-1){\n        msg2.end = true;\n    }\n    else{\n        msg2.end = false;\n    }\n    node.send(msg2);\n}\n",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 680,
+            "y": 520,
+            "wires": [
+                [
+                    "64d37206bf381b47"
+                ]
+            ]
+        },
+        {
+            "id": "64d37206bf381b47",
+            "type": "delay",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "pauseType": "rate",
+            "timeout": "5",
+            "timeoutUnits": "seconds",
+            "rate": "1",
+            "nbRateUnits": "1",
+            "rateUnits": "second",
+            "randomFirst": "1",
+            "randomLast": "5",
+            "randomUnits": "seconds",
+            "drop": false,
+            "allowrate": true,
+            "outputs": 1,
+            "x": 825,
+            "y": 520,
+            "wires": [
+                [
+                    "a9001338cbf5fb68"
+                ]
+            ],
+            "l": false
+        },
+        {
+            "id": "a9001338cbf5fb68",
+            "type": "sqlite",
+            "z": "14fea2af83a06baf",
+            "mydb": "sqlitedb_id",
+            "sqlquery": "msg.topic",
+            "sql": "",
+            "name": "",
+            "x": 940,
+            "y": 520,
+            "wires": [
+                [
+                    "db5514b7f5d78739"
+                ]
+            ]
+        },
+        {
+            "id": "db5514b7f5d78739",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "更新点位",
+            "func": "const arr = msg.payload;\nlet obj = {};\nlet monitors = global.get(\"datas\");\nfor(let i=0;i<arr.length;i++){\n    obj[arr[i].code] = arr[i];\n    monitors[arr[i].code] = obj[arr[i].code].value;\n}\nconst idx = msg.idx;\nconst code = msg.code;\nvar devices = global.get(\"devices\");\ndevices[code].monitor = obj;\n\nreturn msg;",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 1100,
+            "y": 520,
+            "wires": [
+                [
+                    "19e23dcf92ebda54"
+                ]
+            ]
+        },
+        {
+            "id": "19e23dcf92ebda54",
+            "type": "switch",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "end",
+            "propertyType": "msg",
+            "rules": [
+                {
+                    "t": "true"
+                }
+            ],
+            "checkall": "true",
+            "repair": false,
+            "outputs": 1,
+            "x": 1270,
+            "y": 520,
+            "wires": [
+                [
+                    "0810b19c41f9896c",
+                    "e3d7620f18ec3db1"
+                ]
+            ]
+        },
+        {
+            "id": "0810b19c41f9896c",
+            "type": "switch",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "rewrite",
+            "propertyType": "global",
+            "rules": [
+                {
+                    "t": "true"
+                }
+            ],
+            "checkall": "true",
+            "repair": false,
+            "outputs": 1,
+            "x": 1410,
+            "y": 520,
+            "wires": [
+                [
+                    "59f89ef1aef61e90"
+                ]
+            ]
+        },
+        {
+            "id": "59f89ef1aef61e90",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "点位设置",
+            "func": "FUNC_1",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 1320,
+            "y": 400,
+            "wires": [
+                [
+                    "66ac7673b0cac208"
+                ]
+            ]
+        },
+        {
+            "id": "4686358fbfc7c277",
+            "type": "file",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "filename": "filename",
+            "filenameType": "msg",
+            "appendNewline": false,
+            "createDir": false,
+            "overwriteFile": "true",
+            "encoding": "none",
+            "x": 1720,
+            "y": 400,
+            "wires": [
+                []
+            ]
+        },
+        {
+            "id": "b5849a7e2c2ca7d3",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "读全局变量",
+            "func": "const type = global.get(\"config_flow_type\");\nmsg.filename = global.get(\"userDir\") + \"\\\\config-nodes.\"+type;\nreturn msg;",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 210,
+            "y": 240,
+            "wires": [
+                [
+                    "c71f4cbcdfac7dfc"
+                ]
+            ]
+        },
+        {
+            "id": "c71f4cbcdfac7dfc",
+            "type": "file in",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "filename": "filename",
+            "filenameType": "msg",
+            "format": "utf8",
+            "chunk": false,
+            "sendError": false,
+            "encoding": "none",
+            "allProps": false,
+            "x": 380,
+            "y": 240,
+            "wires": [
+                [
+                    "a91d4381fc0f37a5"
+                ]
+            ]
+        },
+        {
+            "id": "1486b0fc2257aa06",
+            "type": "json",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "payload",
+            "action": "",
+            "pretty": false,
+            "x": 650,
+            "y": 220,
+            "wires": [
+                [
+                    "e5f37db092a36b89"
+                ]
+            ]
+        },
+        {
+            "id": "e5f37db092a36b89",
+            "type": "change",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "rules": [
+                {
+                    "t": "set",
+                    "p": "config-nodes",
+                    "pt": "global",
+                    "to": "payload",
+                    "tot": "msg"
+                }
+            ],
+            "action": "",
+            "property": "",
+            "from": "",
+            "to": "",
+            "reg": false,
+            "x": 850,
+            "y": 240,
+            "wires": [
+                [
+                    "03bccdf3ead313fd"
+                ]
+            ]
+        },
+        {
+            "id": "5554a2a2f33a43c7",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "读流程后缀",
+            "func": "msg.filename = global.get(\"userDir\") + \"\\\\flow-manager-cfg.json\";\nreturn msg;",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 350,
+            "y": 80,
+            "wires": [
+                [
+                    "8d56d67f7ffce819"
+                ]
+            ]
+        },
+        {
+            "id": "8d56d67f7ffce819",
+            "type": "file in",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "filename": "filename",
+            "filenameType": "msg",
+            "format": "utf8",
+            "chunk": false,
+            "sendError": false,
+            "encoding": "none",
+            "allProps": false,
+            "x": 520,
+            "y": 80,
+            "wires": [
+                [
+                    "6e436d7cbf717f52"
+                ]
+            ]
+        },
+        {
+            "id": "6e436d7cbf717f52",
+            "type": "json",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "payload",
+            "action": "obj",
+            "pretty": false,
+            "x": 670,
+            "y": 80,
+            "wires": [
+                [
+                    "93a977d08b9482ac"
+                ]
+            ]
+        },
+        {
+            "id": "93a977d08b9482ac",
+            "type": "change",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "rules": [
+                {
+                    "t": "set",
+                    "p": "config_flow_type",
+                    "pt": "global",
+                    "to": "payload.fileFormat",
+                    "tot": "msg"
+                }
+            ],
+            "action": "",
+            "property": "",
+            "from": "",
+            "to": "",
+            "reg": false,
+            "x": 880,
+            "y": 80,
+            "wires": [
+                [
+                    "b5849a7e2c2ca7d3"
+                ]
+            ]
+        },
+        {
+            "id": "a91d4381fc0f37a5",
+            "type": "switch",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "config_flow_type",
+            "propertyType": "global",
+            "rules": [
+                {
+                    "t": "eq",
+                    "v": "json",
+                    "vt": "str"
+                },
+                {
+                    "t": "eq",
+                    "v": "yaml",
+                    "vt": "str"
+                }
+            ],
+            "checkall": "true",
+            "repair": false,
+            "outputs": 2,
+            "x": 510,
+            "y": 240,
+            "wires": [
+                [
+                    "1486b0fc2257aa06"
+                ],
+                [
+                    "e289599e0a85e00c"
+                ]
+            ]
+        },
+        {
+            "id": "e289599e0a85e00c",
+            "type": "yaml",
+            "z": "14fea2af83a06baf",
+            "property": "payload",
+            "name": "",
+            "x": 650,
+            "y": 260,
+            "wires": [
+                [
+                    "e5f37db092a36b89"
+                ]
+            ]
+        },
+        {
+            "id": "4829104f23139823",
+            "type": "json",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "payload",
+            "action": "",
+            "pretty": false,
+            "x": 970,
+            "y": 580,
+            "wires": [
+                [
+                    "957f201f498caea8"
+                ]
+            ]
+        },
+        {
+            "id": "03cd708992d10877",
+            "type": "switch",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "config_flow_type",
+            "propertyType": "global",
+            "rules": [
+                {
+                    "t": "eq",
+                    "v": "json",
+                    "vt": "str"
+                },
+                {
+                    "t": "eq",
+                    "v": "yaml",
+                    "vt": "str"
+                }
+            ],
+            "checkall": "true",
+            "repair": false,
+            "outputs": 2,
+            "x": 830,
+            "y": 600,
+            "wires": [
+                [
+                    "4829104f23139823"
+                ],
+                [
+                    "156bbe6344c6d8ad"
+                ]
+            ]
+        },
+        {
+            "id": "156bbe6344c6d8ad",
+            "type": "yaml",
+            "z": "14fea2af83a06baf",
+            "property": "payload",
+            "name": "",
+            "x": 970,
+            "y": 620,
+            "wires": [
+                [
+                    "957f201f498caea8"
+                ]
+            ]
+        },
+        {
+            "id": "caed6ee2ba3bfde5",
+            "type": "json",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "payload",
+            "action": "",
+            "pretty": false,
+            "x": 1590,
+            "y": 380,
+            "wires": [
+                [
+                    "4686358fbfc7c277"
+                ]
+            ]
+        },
+        {
+            "id": "66ac7673b0cac208",
+            "type": "switch",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "property": "config_flow_type",
+            "propertyType": "global",
+            "rules": [
+                {
+                    "t": "eq",
+                    "v": "json",
+                    "vt": "str"
+                },
+                {
+                    "t": "eq",
+                    "v": "yaml",
+                    "vt": "str"
+                }
+            ],
+            "checkall": "true",
+            "repair": false,
+            "outputs": 2,
+            "x": 1450,
+            "y": 400,
+            "wires": [
+                [
+                    "caed6ee2ba3bfde5"
+                ],
+                [
+                    "f1e6fd9ac1732ae7"
+                ]
+            ]
+        },
+        {
+            "id": "f1e6fd9ac1732ae7",
+            "type": "yaml",
+            "z": "14fea2af83a06baf",
+            "property": "payload",
+            "name": "",
+            "x": 1590,
+            "y": 420,
+            "wires": [
+                [
+                    "4686358fbfc7c277"
+                ]
+            ]
+        },
+        {
+            "id": "06951cb4e0af4735",
+            "type": "function",
+            "z": "14fea2af83a06baf",
+            "name": "删除数据",
+            "func": "global.set(\"config_flow_type\",undefined);\nglobal.set(\"config-nodes\",undefined);",
+            "outputs": 1,
+            "timeout": 0,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 1380,
+            "y": 680,
+            "wires": [
+                []
+            ]
+        },
+        {
+            "id": "e3d7620f18ec3db1",
+            "type": "delay",
+            "z": "14fea2af83a06baf",
+            "name": "",
+            "pauseType": "delay",
+            "timeout": "5",
+            "timeoutUnits": "seconds",
+            "rate": "1",
+            "nbRateUnits": "1",
+            "rateUnits": "second",
+            "randomFirst": "1",
+            "randomLast": "5",
+            "randomUnits": "seconds",
+            "drop": false,
+            "allowrate": false,
+            "outputs": 1,
+            "x": 1315,
+            "y": 620,
+            "wires": [
+                [
+                    "06951cb4e0af4735"
+                ]
+            ],
+            "l": false
+        }
+    ]
+}
