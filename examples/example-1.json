@@ -1,0 +1,117 @@
+[
+    {
+        "id": "7524ec402b9b1ba3",
+        "type": "inject",
+        "z": "a6632bb9eb46a176",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 290,
+        "y": 720,
+        "wires": [
+            [
+                "2fb992585ba695dc"
+            ]
+        ]
+    },
+    {
+        "id": "2fb992585ba695dc",
+        "type": "data-center",
+        "z": "a6632bb9eb46a176",
+        "name": "",
+        "x": 430,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6cc27a840456a22a",
+        "type": "inject",
+        "z": "a6632bb9eb46a176",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "x": 1130,
+        "y": 420,
+        "wires": [
+            [
+                "2fc6f3fd6b9c13d3"
+            ]
+        ]
+    },
+    {
+        "id": "488f957f40686289",
+        "type": "inject",
+        "z": "a6632bb9eb46a176",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "false",
+        "payloadType": "bool",
+        "x": 1130,
+        "y": 460,
+        "wires": [
+            [
+                "2fc6f3fd6b9c13d3"
+            ]
+        ]
+    },
+    {
+        "id": "2fc6f3fd6b9c13d3",
+        "type": "change",
+        "z": "a6632bb9eb46a176",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "rewrite",
+                "pt": "global",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1370,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    }
+]
