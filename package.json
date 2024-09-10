@@ -5,6 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [ "node-red","data-center" ],
   "author": "wei1224hf@gmail.com",
   "license": "ISC",
   "node-red": {
