@@ -18,12 +18,12 @@
     "out": [],
     "env": [],
     "meta": {
-        "module": "node-red-data-center",
+        "module": "node-red-data-create",
         "type": "data-create",
         "version": "0.0.2",
         "author": "wei1224hf@gmail.com",
-        "desc": "change a request , then waiting for specific response to change, reset the request after 2 seconds",
-        "keywords": "memory monitor",
+        "desc": "node-red-data-create",
+        "keywords": "data-create",
         "license": "BSD-3-Clause"
     },
     "color": "#DDAA99",

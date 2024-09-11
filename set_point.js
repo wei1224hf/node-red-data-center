@@ -211,49 +211,101 @@ for (let key in devices) {
         }
         let idx = 0;
         let idx2 = 0;
+        let prevReadPoint = {code:0,address:-1,mode:'read',quantity:0};
+        let prevWritePoint = {code:0,address:-1,mode:'write',quantity:0,names:[]};
+        var modbusReadObjs = [];
+        let modbusWriteObjs = [];
         for (let key2 in monitor) {
-
-            const point = monitor[key2];
+            let point = monitor[key2];
+            point.address = parseInt(point.address);
+            point.quantity = 1;
             if (point.mode == 'read') {
-                idx++;
-                if (idx == readLength) {
-                    strs.funStr += "setTimeout(function(){ node.send({payload : {end:true,dev:'" + device.code + "', 'fc':3, 'unitid': 1, 'address':  " + point.address + " , 'quantity': 1 }}); \n"
+                if(point.address == prevReadPoint.address + prevReadPoint.quantity){
+                    prevReadPoint.quantity ++;
                 }
-                else {
-                    strs.funStr += "setTimeout(function(){ node.send({payload : {end:false,dev:'" + device.code + "', 'fc': 3, 'unitid': 1, 'address':  " + point.address + " , 'quantity': 1 }}); \n"
+                else{
+                    modbusReadObjs.push(point);
+                    prevReadPoint = point;
                 }
-                strs.funStr2 += "},80); \n"
-
-                strs.funReceiveStr = "" +
-                    "let devices = global.get('devices'); \n" +
-                    "let device = devices['" + device.code + "']; \n" +
-                    "let monitor = device['monitor']; \n" +
-                    "let datas = global.get('datas'); \n" +
-                    "for(let key in monitor){ \n" +
-                    "    let point = monitor[key]; \n" +
-                    "    if( parseInt( point.address) == msg.modbusRequest.address){ \n" +
-                    "        point.value = msg.payload[0]; \n" +
-                    "        for(let key2 in datas){ \n" +
-                    "            if(key2 == key){ \n" +
-                    "                datas[key2] = point.value; \n" +
-                    "                break; \n" +
-                    "            } \n" +
-                    "        } \n" +
-                    "        break; \n" +
-                    "    } \n" +
-                    "} \n";
             }
             else if (point.mode == 'write') {
-                idx2++;
-                if (idx2 == writeLength) {
-                    strs.funStrW += "setTimeout(function(){const datas = global.get('datas');let devices = global.get('devices');const val = datas['" + point.code + "']; devices['" + device.code + "'].monitor['" + point.code + "'].value = val; node.send({payload : {value:val,end:true,dev:'" + device.code + "', 'fc':6, 'unitid': 1, 'address':  " + point.address + " , 'quantity': 1 }}); \n"
+                
+                if(point.address == prevWritePoint.address + prevWritePoint.quantity){
+                    prevWritePoint.quantity ++;
+                    prevWritePoint.names.push(point.code);
                 }
-                else {
-                    strs.funStrW += "setTimeout(function(){const datas = global.get('datas');const val = datas['" + point.code + "']; let devices = global.get('devices'); devices['" + device.code + "'].monitor['" + point.code + "'].value = val; node.send({payload : {value:val,end:false,dev:'" + device.code + "', 'fc': 6, 'unitid': 1, 'address':  " + point.address + " , 'quantity': 1 }}); \n"
+                else{                    
+                    point.names = [];
+                    point.names.push(point.code);
+                    prevWritePoint = point;
+                    modbusWriteObjs.push(point);
                 }
-                strs.funStrW2 += "},80); \n"
             }
+            
         }
+
+        for(let i=0;i<modbusReadObjs.length;i++){
+            let point = modbusReadObjs[i];
+            let isEnd = "false";
+            if (i == modbusReadObjs.length-1) {
+                isEnd = "true";
+            }
+
+            strs.funStr += "setTimeout(function(){ node.send({payload : {end:"+isEnd+",dev:'" + device.code + "', 'fc':3, 'unitid': 1, 'address':  " + point.address + " , 'quantity': " + point.quantity + " }}); \n"
+            strs.funStr2 += "},80); \n"
+        }
+        console.debug(modbusReadObjs);
+        for(let i=0;i<modbusWriteObjs.length;i++){
+            let point = modbusWriteObjs[i];
+            let isEnd = "false";
+            if (i == modbusWriteObjs.length-1) {
+                isEnd = "true";
+            }
+            const arr = point.names;
+            let valStr = "[";
+            let valStr2 = "";
+            for(let i2=0;i2<arr.length;i2++){
+                valStr += "datas['" + arr[i2] + "'],";
+                valStr2 += "devices['" + device.code + "'].monitor['" + arr[i2] + "'].value = datas['" + arr[i2] + "'];\n"
+            }
+            valStr = valStr.substring(0,valStr.length-1);
+            valStr += "]";
+            strs.funStrW += ""+
+            "setTimeout(function(){"
+            +"const datas = global.get('datas');"
+            +"const val = "+valStr+"; "
+            +"let devices = global.get('devices'); "
+            +valStr2
+            +" node.send({payload : {value:val,end:"+isEnd+",dev:'" + device.code + "', 'fc': 16, 'unitid': 1, 'address':  " + point.address + " , 'quantity': " + point.quantity + " }}); \n"
+        
+            strs.funStrW2 += "},80); \n"
+
+        }        
+
+        strs.funReceiveStr = "" +
+        "let devices = global.get('devices'); \n" +
+        "let device = devices['" + device.code + "']; \n" +
+        "let monitor = device['monitor']; \n" +
+        "let datas = global.get('datas'); \n" +
+        "	let vals = msg.payload;							\n"+
+        "	for(let i=0;i<vals.length;i++){							\n"+
+        "		let address = msg.modbusRequest.address + i;						\n"+
+        "		for(let key in monitor){ 						\n"+
+        "			let point = monitor[key]; 					\n"+
+        "			if( parseInt( point.address) == address){ 					\n"+
+        "				point.value = msg.payload[i]; 				\n"+
+        "				for(let key2 in datas){ 				\n"+
+        "					if(key2 == key){ 			\n"+
+        "						datas[key2] = point.value; 		\n"+
+        "						break; 		\n"+
+        "					} 			\n"+
+        "				} 				\n"+
+        "				break; 				\n"+
+        "			} 					\n"+
+        "		} 						\n"+
+        "	}							\n";
+        
+
         let ojbRead = {
             "id": device.code + "__read",
             "type": "function",
